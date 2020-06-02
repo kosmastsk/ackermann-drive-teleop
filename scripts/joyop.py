@@ -21,15 +21,11 @@ class AckermannDriveJoyop:
         if len(args)==1 or len(args)==2:
             self.max_speed = float(args[0])
             self.max_steering_angle = float(args[len(args)-1])
-            cmd_topic = 'ackermann_cmd'
-        elif len(args) == 3:
-            self.max_speed = float(args[0])
-            self.max_steering_angle = float(args[1])
-            cmd_topic = '/' + args[2]
         else:
-            self.max_speed = 0.2
-            self.max_steering_angle = 0.7
-            cmd_topic = 'ackermann_cmd'
+            self.max_speed = 3.0
+            self.max_steering_angle = 2.0
+
+        cmd_topic = 'rbcar_robot_control/command'
 
         self.speed = 0
         self.steering_angle = 0

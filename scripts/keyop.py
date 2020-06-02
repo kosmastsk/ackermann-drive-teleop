@@ -45,13 +45,10 @@ class AckermannDriveKeyop:
             max_speed = float(args[0])
             max_steering_angle = float(args[1])
         else:
-            max_speed = 0.2
-            max_steering_angle = 0.7
+            max_speed = 3.0
+            max_steering_angle = 2.0
 
-        if len(args) > 2:
-            cmd_topic = '/' + args[2]
-        else:
-            cmd_topic = 'ackermann_cmd'
+        cmd_topic = '/rbcar_robot_control/command'
 
         self.speed_range = [-float(max_speed), float(max_speed)]
         self.steering_angle_range = [-float(max_steering_angle),
@@ -71,12 +68,14 @@ class AckermannDriveKeyop:
 
     def pub_callback(self, event):
         ackermann_cmd_msg = AckermannDriveStamped()
+        ackermann_cmd_msg.header.stamp = rospy.Time.now()
+        ackermann_cmd_msg.header.frame_id = ''
         ackermann_cmd_msg.drive.speed = self.speed
         ackermann_cmd_msg.drive.steering_angle = self.steering_angle
         self.motors_pub.publish(ackermann_cmd_msg)
 
     def print_state(self):
-        sys.stderr.write('\x1b[2J\x1b[H')
+        sys.stderr.write('\x1b[2J\x1b[H') # emptying the screen
         rospy.loginfo('\x1b[1M\r*********************************************')
         rospy.loginfo('\x1b[1M\rUse arrows to change speed and steering angle')
         rospy.loginfo('\x1b[1M\rUse space to brake and tab to align wheels')
@@ -97,34 +96,40 @@ class AckermannDriveKeyop:
 
     def key_loop(self):
         self.settings = termios.tcgetattr(sys.stdin)
-        while 1:
-            key = self.get_key()
-            if key in key_bindings.keys():
-                if key == control_keys['space']:
-                    self.speed = 0.0
-                elif key == control_keys['tab']:
-                    self.steering_angle = 0.0
-                else:
-                    self.speed = self.speed + key_bindings[key][0]
-                    self.steering_angle = \
+        try:
+            while 1:
+                key = self.get_key()
+                if key in key_bindings.keys():
+                    if key == control_keys['space']:
+                        self.speed = 0.0
+                    elif key == control_keys['tab']:
+                        self.steering_angle = 0.0
+                    else:
+                        self.speed = self.speed + key_bindings[key][0]
+                        self.steering_angle = \
                             self.steering_angle + key_bindings[key][1]
-                    self.speed = clip(
-                        self.speed, self.speed_range[0], self.speed_range[1])
-                    self.steering_angle = clip(
-                        self.steering_angle,
-                        self.steering_angle_range[0],
-                        self.steering_angle_range[1])
-                self.print_state()
-            elif key == '\x03' or key == '\x71':  # ctr-c or q
-                break
-            else:
-                continue
+                        self.speed = clip(
+                            self.speed, self.speed_range[0], self.speed_range[1])
+                        self.steering_angle = clip(
+                            self.steering_angle,
+                            self.steering_angle_range[0],
+                            self.steering_angle_range[1])
+                    self.print_state()
+                elif key == '\x03' or key == '\x71':  # ctr-c or q
+                    break
+                else:
+                    continue
+        except Exception as e:
+            print(e)
         self.finalize()
+
 
     def finalize(self):
         rospy.loginfo('Halting motors, aligning wheels and exiting...')
         self.settings = termios.tcgetattr(sys.stdin)
         ackermann_cmd_msg = AckermannDriveStamped()
+        ackermann_cmd_msg.header.stamp = rospy.Time.now()
+        ackermann_cmd_msg.header.frame_id = ''
         ackermann_cmd_msg.drive.speed = 0
         ackermann_cmd_msg.drive.steering_angle = 0
         self.motors_pub.publish(ackermann_cmd_msg)
